@@ -1,6 +1,5 @@
 from mcp.server.fastmcp import FastMCP
 from dotenv import load_dotenv
-from sentence_transformers import SentenceTransformer
 import json
 import logging
 from typing import Any
@@ -23,21 +22,7 @@ NEO4J_USERNAME=os.getenv("NEO4J_USERNAME")
 NEO4J_PASSWORD=os.getenv("NEO4J_PASSWORD")
 NEO4J_DATABASE=os.getenv("NEO4J_DATABASE")
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
-
-def get_embeddings(prompt:str) -> list:
-    """
-    Get the embedding for a given prompt.
-    Args:
-        prompt (str): The input text to be embedded.
-    Returns:
-        list: The embedding vector for the input text.
-    """
-    embeddings = model.encode(prompt)
-    
-    return embeddings.tolist()
-
-def get_open_ai_embeddings(text: str, client: OpenAI) -> list:
+def get_embeddings(text: str, client: OpenAI) -> list:
     """
     Generates an embedding for a given text.
     Args:
@@ -63,10 +48,9 @@ async def _read(tx: AsyncTransaction, query: str, params: dict[str, Any]) -> str
 
     return json.dumps([r.data() for r in eager_results.records], default=str)
 
-
 def create_mcp_server(neo4j_driver: AsyncDriver, api_key: str, database: str = "neo4j") -> FastMCP:
     mcp: FastMCP = FastMCP("mcp-neo4j-vector-search", dependencies=["neo4j", "pydantic"])
-    openai_client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
+    client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
 
     async def vector_search_neo4j(
         prompt: str = Field(
@@ -75,7 +59,7 @@ def create_mcp_server(neo4j_driver: AsyncDriver, api_key: str, database: str = "
     ) -> list[types.TextContent]:
         """Search for the most similar nodes in the neo4j database using vector search."""
         
-        prompt_embeddings = get_open_ai_embeddings(prompt, openai_client)
+        prompt_embeddings = get_embeddings(prompt, client)
         
         if len(prompt_embeddings) != 1536:  
             raise ValueError(
