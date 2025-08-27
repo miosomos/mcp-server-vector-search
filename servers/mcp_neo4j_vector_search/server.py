@@ -17,10 +17,28 @@ load_dotenv()
 
 logger = logging.getLogger("mcp-neo4j-vector-search")
 
-NEO4J_URI=os.getenv("NEO4J_URI")
-NEO4J_USERNAME=os.getenv("NEO4J_USERNAME")
-NEO4J_PASSWORD=os.getenv("NEO4J_PASSWORD")
-NEO4J_DATABASE=os.getenv("NEO4J_DATABASE")
+async def create_vector_index(
+        index: str, label: str, attribute: str, 
+        neo4j_driver: AsyncDriver, database: str = "neo4j"
+    ) -> str:
+
+    query = f"""
+        CREATE VECTOR INDEX {index} IF NOT EXISTS
+        FOR (n:{label})
+        ON (n.{attribute})
+        OPTIONS {{
+            indexConfig: {{
+                `vector.dimensions`: 1536,
+                `vector.similarity_function`: 'cosine'
+            }}
+        }}
+    """
+    async with neo4j_driver.session(database=database) as session:
+        result = await session.run(query)
+        if not result:
+            logger.warning(f"Failed to create vector index: {index}")
+            return None
+        return index
 
 def get_embeddings(text: str, client: OpenAI) -> list:
     """
@@ -58,33 +76,40 @@ def create_mcp_server(neo4j_driver: AsyncDriver, api_key: str, database: str = "
         ),
     ) -> list[types.TextContent]:
         """Search for the most similar nodes in the neo4j database using vector search."""
-        
+
+        vector_index_name = await create_vector_index("descriptionIndex", "LABEL", "embedding", neo4j_driver, database)
+        print(f"Vector index name: {vector_index_name}")
+
+        if not vector_index_name:
+            logger.warning("Vector index creation failed.")
+            return [types.TextContent(type="text", text="Vector index creation failed.")]
+
         prompt_embeddings = get_embeddings(prompt, client)
-        
+
         if len(prompt_embeddings) != 1536:  
             raise ValueError(
                 f"Embedding dimension mismatch: Expected 1536, got {len(prompt_embeddings)}. "
                 "Ensure the model and Neo4j index dimensions match."
             )
-        query = """
+        query = f"""
             WITH $prompt_embeddings AS prompt_embeddings
-            CALL db.index.vector.queryNodes('embeddableIndex', 10, prompt_embeddings)
+            CALL db.index.vector.queryNodes('{vector_index_name}', 10, prompt_embeddings)
             YIELD node, score
             RETURN node.name as name, node.description as description, score
             ORDER BY score DESC
         """
-        
+
         async with neo4j_driver.session(database=database) as session:
             results = await session.execute_read(
                 _read, query, {"prompt_embeddings": prompt_embeddings}
             )
-        
+
         if not results:
             logger.warning("No results found for the given prompt.")
             return [types.TextContent(type="text", text="No results found.")]
-        
+
         return results
-        
+
     mcp.add_tool(vector_search_neo4j)
 
     return mcp
@@ -110,11 +135,19 @@ def main(
 
     mcp.run(transport="stdio")
 
-if __name__ == "__main__":
-    main(
-        os.getenv("NEO4J_URI", "bolt://localhost:7687"),
+neo4j_driver = AsyncGraphDatabase.driver(
+    os.getenv("NEO4J_URI", "bolt://localhost:7687"),
+    auth=(
         os.getenv("NEO4J_USERNAME", "neo4j"),
         os.getenv("NEO4J_PASSWORD", "password"),
-        os.getenv("NEO4J_DATABASE", "neo4j"),
-        os.getenv("OPENAI_API_KEY", "your_openai_api_key")
-    )
+    ),
+)
+
+mcp = create_mcp_server(
+    neo4j_driver,
+    os.getenv("OPENAI_API_KEY", "your_openai_api_key"),
+    os.getenv("NEO4J_DATABASE", "neo4j")
+)
+
+if __name__ == "__main__":
+    mcp.run(transport="stdio")

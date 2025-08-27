@@ -67,26 +67,15 @@ A blazing-fast **Model Context Protocol (MCP) Server** built with **FastMCP** th
    OPENAI_API_KEY=your_openai_api_key
    ```
 
-4. **Neo4j Vector Index Setup**
-   ```cypher
-   // Create vector index for 1536-dimensional OpenAI embeddings
-   // If does not works
-   CREATE VECTOR INDEX embeddableIndex FOR (n:Document) ON (n.embedding)
-   OPTIONS {indexConfig: {
-     `vector.dimensions`: 1536,
-     `vector.similarity_function`: 'cosine'
-   }}
-   ```
-
-5. **Launch the Server**
+4. **Launch the Server**
    ```bash
    # Activate virtual environment
    source .venv/bin/activate  # On Linux/macOS
    # or
    .venv\Scripts\activate     # On Windows
    
-   # Start the FastMCP server
-   python main.py
+   # Start the FastMCP server in development mode
+   mcp dev server.py
    ```
 
 ## 🛠️ Tool
@@ -115,7 +104,7 @@ vector_search_neo4j(
 | `NEO4J_USERNAME` | Neo4j username | ✅ | `neo4j` |
 | `NEO4J_PASSWORD` | Neo4j password | ✅ | `password` |
 | `NEO4J_DATABASE` | Neo4j database name | ✅ | `neo4j` |
-| `OPENAI_API_KEY` | OpenAI API key | ❌ | `all-MiniLM-L6-v2 model` |
+| `OPENAI_API_KEY` | OpenAI API key | ✅ |  `text-embedding-small` |
 
 ### Neo4j Requirements
 
@@ -178,7 +167,7 @@ Add to your Claude Desktop MCP settings:
    SHOW INDEXES
    
    // Create if missing
-   CREATE VECTOR INDEX embeddableIndex FOR (n:Document) ON (n.embedding)
+   CREATE VECTOR INDEX descriptionIndex FOR (n:Label) ON (n.embedding)
    OPTIONS {indexConfig: {`vector.dimensions`: 1536, `vector.similarity_function`: 'cosine'}}
    ```
 
