@@ -42,14 +42,13 @@ A blazing-fast **Model Context Protocol (MCP) Server** built with **FastMCP** th
    powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
    ```
 
-2. **Clone and setup the project**
+2. **Clone and set up the project**
    ```bash
-   git clone https://github.com/omarguzmanm/mcp-server-vector-search.git
+   git clone https://github.com/miosomos/mcp-server-vector-search.git
    cd mcp-server-vector-search
    
    # Create virtual environment and install dependencies
-   uv venv
-   uv pip install fastmcp neo4j openai python-dotenv sentence-transformers pydantic
+   uv sync
    ```
 
 3. **Environment Configuration**
@@ -69,13 +68,7 @@ A blazing-fast **Model Context Protocol (MCP) Server** built with **FastMCP** th
 
 4. **Launch the Server**
    ```bash
-   # Activate virtual environment
-   source .venv/bin/activate  # On Linux/macOS
-   # or
-   .venv\Scripts\activate     # On Windows
-   
-   # Start the FastMCP server in development mode
-   mcp dev server.py
+   uv run mcp-server-vector-search
    ```
 
 ## 🛠️ Tool
