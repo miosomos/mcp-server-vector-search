@@ -21,7 +21,6 @@ def main():
             args.username or os.getenv("NEO4J_USERNAME", "neo4j"),
             args.password or os.getenv("NEO4J_PASSWORD", "password"),
             args.database or os.getenv("NEO4J_DATABASE", "neo4j"),
-            args.api_key or os.getenv("OPENAI_API_KEY", "your_openai_api_key")
+            args.api_key or os.getenv("OPENAI_API_KEY", "your_openai_api_key"),
         )
     )
-
